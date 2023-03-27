@@ -5,11 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
-import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import com.jeckonly.aidldemo.databinding.ActivityMainBinding
 import com.jeckonly.api.IMyAidlInterface
+import com.jeckonly.api.model.User
+
 
 private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
@@ -64,7 +66,15 @@ class MainActivity : AppCompatActivity() {
         // override callback进行了处理就不需要override handleMessage
         when (it.what) {
             2 -> {
+                Log.d(TAG, "default bundle classloader: ${it.data.classLoader}")
+                it.data.classLoader = classLoader
+                Log.d(TAG, "changed bundle classloader: ${it.data.classLoader}")
                 Log.d(TAG, ("Messenger Handler   " + it.data.getString("server_data")))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Log.d(TAG, ("Messenger Handler getServerUser " + it.data.getParcelable("server_user", User::class.java)))
+                }else {
+                    Log.d(TAG, ("Messenger Handler getServerUser " + it.data.getParcelable("server_user")))
+                }
 
             }
             else -> {
@@ -109,4 +119,6 @@ class MainActivity : AppCompatActivity() {
             unbindService(it)
         }
     }
+
+
 }

@@ -10,6 +10,7 @@ import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
 import android.util.Log
+import com.jeckonly.api.model.User
 
 private const val TAG = "MessengerService"
 
@@ -27,6 +28,7 @@ class MessengerService : Service() {
                 val messenger = it.replyTo
                 val bundle = Bundle().apply {
                     putString("server_data", "server_data")
+                    putParcelable("server_user", User("Server", 1))
                 }
                 val message = Message.obtain(null, 2).apply {
                     data = bundle
