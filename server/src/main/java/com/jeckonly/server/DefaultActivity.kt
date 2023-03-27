@@ -11,6 +11,7 @@ class DefaultActivity : AppCompatActivity() {
         setContentView(R.layout.activity_default)
 
         startService(Intent(this, MyService::class.java))
+        startService(Intent(this, MessengerService::class.java))
 
         findViewById<Button>(R.id.button1).setOnClickListener {
             sendBroadcast(Intent("com.jeckonly.aidldemo.data").apply {

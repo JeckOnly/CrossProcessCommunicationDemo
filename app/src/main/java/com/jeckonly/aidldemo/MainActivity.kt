@@ -4,9 +4,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.*
 import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.os.IBinder
 import android.util.Log
 import androidx.databinding.DataBindingUtil
 import com.jeckonly.aidldemo.databinding.ActivityMainBinding
@@ -31,6 +30,54 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+
+    private val messengerServiceConnection: ServiceConnection = object : ServiceConnection{
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.d(TAG, "messengerServiceConnection： onServiceConnected")
+            Log.d(TAG, "${android.os.Process.myPid()}")
+            messenger = Messenger(service)
+            val bundle = Bundle().apply {
+                putString("client_data", "client_data")
+            }
+            val message = Message.obtain(null, 1).apply {
+                data = bundle
+                replyTo = Messenger(dealServerMessageHandler)
+            }
+            try {
+                messenger.send(message)
+            } catch (e: RemoteException) {
+                e.printStackTrace()
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.d(TAG, "messengerServiceConnection： onServiceDisconnected")
+        }
+
+    }
+
+    private val handlerThread = HandlerThread("MainActivity").apply {
+        start()
+    }
+
+    private val dealServerMessageHandler = Handler(handlerThread.looper) {
+        // override callback进行了处理就不需要override handleMessage
+        when (it.what) {
+            2 -> {
+                Log.d(TAG, ("Messenger Handler   " + it.data.getString("server_data")))
+
+            }
+            else -> {
+                Log.d(TAG,"else")
+            }
+        }
+        return@Handler true
+    }
+
+    private lateinit var messenger: Messenger
+
+    private var serviceConnectionList = mutableListOf<ServiceConnection>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView<ActivityMainBinding?>(this, R.layout.activity_main)
@@ -38,7 +85,17 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent().apply {
             component = ComponentName("com.jeckonly.server", "com.jeckonly.server.MyService")
         }
-        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        val bindMessengerIntent = Intent().apply {
+            component = ComponentName("com.jeckonly.server", "com.jeckonly.server.MessengerService")
+        }
+        serviceConnection.apply {
+            bindService(intent, this, Context.BIND_AUTO_CREATE)
+            serviceConnectionList.add(this)
+        }
+        messengerServiceConnection.apply {
+            bindService(bindMessengerIntent, this, Context.BIND_AUTO_CREATE)
+            serviceConnectionList.add(this)
+        }
         binding.button.setOnClickListener {
             binding.textView.text =
                 iMyAidlInterface.doubleYourString(binding.textView.text.toString())
@@ -48,6 +105,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unbindService(serviceConnection)
+        serviceConnectionList.forEach {
+            unbindService(it)
+        }
     }
 }

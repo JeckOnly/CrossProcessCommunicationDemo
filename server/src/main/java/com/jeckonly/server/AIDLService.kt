@@ -6,7 +6,7 @@ import android.os.IBinder
 import android.util.Log
 import com.jeckonly.api.IMyAidlInterface
 
-const val TAG = "MyService"
+private const val TAG = "MyService"
 class MyService: Service() {
     override fun onBind(intent: Intent?): IBinder {
         return object :IMyAidlInterface.Stub() {
