@@ -12,7 +12,7 @@ import androidx.databinding.DataBindingUtil
 import com.jeckonly.aidldemo.databinding.ActivityMainBinding
 import com.jeckonly.api.IMyAidlInterface
 
-const val TAG = "MainActivity"
+private const val TAG = "MainActivity"
 class MainActivity : AppCompatActivity() {
 
     private lateinit var iMyAidlInterface: IMyAidlInterface
