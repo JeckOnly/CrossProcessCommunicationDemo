@@ -8,9 +8,16 @@ import android.os.*
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.lifecycleScope
 import com.jeckonly.aidldemo.databinding.ActivityMainBinding
 import com.jeckonly.api.IMyAidlInterface
 import com.jeckonly.api.model.User
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.*
+import java.net.Socket
 
 
 private const val TAG = "MainActivity"
@@ -88,6 +95,10 @@ class MainActivity : AppCompatActivity() {
 
     private var serviceConnectionList = mutableListOf<ServiceConnection>()
 
+    private lateinit var clientSocket: Socket
+    private lateinit var printWriter: PrintWriter
+    private lateinit var serverInput: BufferedReader
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView<ActivityMainBinding?>(this, R.layout.activity_main)
@@ -98,6 +109,10 @@ class MainActivity : AppCompatActivity() {
         val bindMessengerIntent = Intent().apply {
             component = ComponentName("com.jeckonly.server", "com.jeckonly.server.MessengerService")
         }
+        val socketServiceIntent = Intent(this, LocalSocketService::class.java)
+//        val socketServiceIntent = Intent().apply {
+//            component = ComponentName("com.jeckonly.server", "com.jeckonly.server.SocketService")
+//        }
         serviceConnection.apply {
             bindService(intent, this, Context.BIND_AUTO_CREATE)
             serviceConnectionList.add(this)
@@ -106,19 +121,71 @@ class MainActivity : AppCompatActivity() {
             bindService(bindMessengerIntent, this, Context.BIND_AUTO_CREATE)
             serviceConnectionList.add(this)
         }
+        startService(socketServiceIntent)
         binding.button.setOnClickListener {
             binding.textView.text =
                 iMyAidlInterface.doubleYourString(binding.textView.text.toString())
         }
+        lifecycleScope.launch(Dispatchers.IO) {
+            connectSocketServer()
+        }
+
     }
 
+    private suspend fun connectSocketServer() {
+        Log.d(TAG, "开始连接")
+        var socket: Socket? = null
+        while (socket == null) {
+            try {
+                //选择和服务器相同的端口8688
+                socket = withContext(Dispatchers.IO) {
+                    Socket("localhost", 8080)
+                }
+                clientSocket = socket
+                printWriter = withContext(Dispatchers.IO) {
+                    PrintWriter(BufferedWriter(OutputStreamWriter(socket.getOutputStream())), true)
+                }
+            } catch (e: Exception) {
+                delay(5000)
+                Log.e(TAG, e.printStackTrace().toString())
+
+            }
+        }
+        try {
+            // 接收服务器端的消息
+            serverInput = withContext(Dispatchers.IO){
+                BufferedReader(InputStreamReader(socket.getInputStream()))
+            }
+
+            while (!isFinishing) {
+                val msg = withContext(Dispatchers.IO) {
+                    serverInput.readLine()
+                }
+                if (msg != null) {
+                    Log.i(TAG, "收到服务端的消息: $msg")
+                    delay(1000)
+                    printWriter.println("${msg}_client(${Process.myPid()})")
+                }
+            }
+            withContext(Dispatchers.IO) {
+                Log.d(TAG, "执行close")
+                printWriter.close()
+                serverInput.close()
+                clientSocket.close()
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
 
     override fun onDestroy() {
         super.onDestroy()
         serviceConnectionList.forEach {
             unbindService(it)
         }
+        // 如果协程取消的时候没来得及关闭再次关闭
+        printWriter.close()
+        serverInput.close()
+        clientSocket.close()
     }
-
-
 }
