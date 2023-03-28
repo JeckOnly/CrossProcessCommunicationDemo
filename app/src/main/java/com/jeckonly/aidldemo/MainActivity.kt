@@ -11,6 +11,7 @@ import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.lifecycleScope
 import com.jeckonly.aidldemo.databinding.ActivityMainBinding
 import com.jeckonly.api.IMyAidlInterface
+import com.jeckonly.api.model.Address
 import com.jeckonly.api.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -81,6 +82,12 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, ("Messenger Handler getServerUser " + it.data.getParcelable("server_user", User::class.java)))
                 }else {
                     Log.d(TAG, ("Messenger Handler getServerUser " + it.data.getParcelable("server_user")))
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Log.d(TAG, ("Messenger Handler getServerAddress " + it.data.getParcelable("server_address", Address::class.java)))
+                }else {
+                    Log.d(TAG, ("Messenger Handler getServerAddress " + it.data.getParcelable("server_address")))
                 }
 
             }
